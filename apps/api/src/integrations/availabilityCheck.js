@@ -35,7 +35,16 @@ function detectPrice(text) {
 
 export async function runAvailabilityCheck() {
   const targets = await pool.query(`
-    SELECT wt.id, wt.url, wt.supplier_name AS "supplierName", wt.product_name AS "productName", i.name AS "ingredientName"
+    SELECT
+      wt.id,
+      wt.url,
+      wt.supplier_name AS "supplierName",
+      wt.product_name AS "productName",
+      wt.stock_selector AS "stockSelector",
+      wt.price_selector AS "priceSelector",
+      wt.in_stock_regex AS "inStockRegex",
+      wt.out_of_stock_regex AS "outOfStockRegex",
+      i.name AS "ingredientName"
     FROM supplier_watch_targets wt
     JOIN ingredients i ON i.id = wt.ingredient_id
     WHERE wt.enabled = TRUE
@@ -60,11 +69,46 @@ export async function runAvailabilityCheck() {
       const html = await response.text();
       const $ = cheerio.load(html);
       const pageText = $("body").text().replace(/\s+/g, " ").slice(0, 50000);
+      let availabilitySourceText = pageText;
+      let priceSourceText = pageText;
 
-      const availability = detectAvailability(pageText);
-      inStock = availability.inStock;
-      availabilityText = availability.availabilityText;
-      priceText = detectPrice(pageText);
+      if (target.stockSelector) {
+        const selected = $(target.stockSelector).text().replace(/\s+/g, " ").trim();
+        if (selected) {
+          availabilitySourceText = selected;
+        }
+      }
+
+      if (target.priceSelector) {
+        const selected = $(target.priceSelector).text().replace(/\s+/g, " ").trim();
+        if (selected) {
+          priceSourceText = selected;
+        }
+      }
+
+      if (target.outOfStockRegex) {
+        const outRe = new RegExp(target.outOfStockRegex, "i");
+        if (outRe.test(availabilitySourceText)) {
+          inStock = false;
+          availabilityText = "Out of stock regex matched";
+        }
+      }
+
+      if (inStock === null && target.inStockRegex) {
+        const inRe = new RegExp(target.inStockRegex, "i");
+        if (inRe.test(availabilitySourceText)) {
+          inStock = true;
+          availabilityText = "In stock regex matched";
+        }
+      }
+
+      if (inStock === null) {
+        const availability = detectAvailability(availabilitySourceText);
+        inStock = availability.inStock;
+        availabilityText = availability.availabilityText;
+      }
+
+      priceText = detectPrice(priceSourceText) || detectPrice(pageText);
     } catch (error) {
       availabilityText = `Request error: ${error.message}`;
     }
