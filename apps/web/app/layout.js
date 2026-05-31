@@ -24,6 +24,7 @@ export default function RootLayout({ children }) {
               <a href="/fulfillment">Fulfillment</a>
               <a href="/inventory">Inventory</a>
               <a href="/recipes">Recipes</a>
+              <a href="/availability">Supplier Watch</a>
             </nav>
           </header>
           {children}

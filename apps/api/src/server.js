@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import { pool } from "./db/index.js";
 import { syncGoogleFormsFromCsvUrl } from "./integrations/googleFormsSync.js";
+import { runAvailabilityCheck } from "./integrations/availabilityCheck.js";
 
 const app = express();
 const port = Number(process.env.PORT || 4000);
@@ -313,6 +314,46 @@ app.post("/api/integrations/google/forms/sync", async (_req, res) => {
     res.json({ ok: true, summary });
   } catch (error) {
     res.status(500).json({ ok: false, error: "Google Forms sync failed", details: error.message });
+  }
+});
+
+app.post("/api/availability/check", async (_req, res) => {
+  try {
+    const results = await runAvailabilityCheck();
+    res.json({ ok: true, checked: results.length, results });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: "Availability check failed", details: error.message });
+  }
+});
+
+app.get("/api/availability/latest", async (_req, res) => {
+  try {
+    const result = await pool.query(`
+      WITH latest AS (
+        SELECT
+          s.*,
+          ROW_NUMBER() OVER (PARTITION BY s.target_id ORDER BY s.checked_at DESC) rn
+        FROM ingredient_availability_snapshots s
+      )
+      SELECT
+        wt.id AS "targetId",
+        wt.supplier_name AS "supplierName",
+        wt.product_name AS "productName",
+        wt.url,
+        i.name AS "ingredientName",
+        l.in_stock AS "inStock",
+        l.availability_text AS "availabilityText",
+        l.price_text AS "priceText",
+        l.checked_at AS "checkedAt"
+      FROM supplier_watch_targets wt
+      JOIN ingredients i ON i.id = wt.ingredient_id
+      LEFT JOIN latest l ON l.target_id = wt.id AND l.rn = 1
+      WHERE wt.enabled = TRUE
+      ORDER BY i.name ASC, wt.supplier_name ASC
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to load availability", details: error.message });
   }
 });
 

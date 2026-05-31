@@ -18,6 +18,8 @@ Phase 1 scaffold for cookie operations with Docker, Google Forms ingestion, fulf
 - `GET /api/recipes`
 - `POST /api/recipes`
 - `POST /api/integrations/google/forms/sync`
+- `POST /api/availability/check`
+- `GET /api/availability/latest`
 
 ## Google Forms Sync
 1. Link Form -> Google Sheet.
@@ -47,3 +49,4 @@ Payload shape recommendation:
 - `/fulfillment` Fulfillment board with status actions
 - `/inventory` Inventory levels
 - `/recipes` Recipe BOM overview
+- `/availability` Supplier watch (stock + price signal snapshots)
