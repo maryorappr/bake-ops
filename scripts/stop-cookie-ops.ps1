@@ -5,5 +5,4 @@ $web = Get-CimInstance Win32_Process | Where-Object { $_.Name -eq "node.exe" -an
 
 $api | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
 $web | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
-
-& tailscale serve --https=443 off
+Write-Output "Cookie Ops local dev services stopped."

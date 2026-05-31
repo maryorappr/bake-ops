@@ -6,9 +6,6 @@ Phase 1 scaffold for cookie operations with Docker, Google Forms ingestion, fulf
 - `cd infra/docker`
 - `docker compose up -d`
 
-## Tailscale URL
-- `<https://fridge.tail62e514.ts.net/>`
-
 ## API Surface (Phase 1)
 - `GET /api/health`
 - `GET /api/dashboard/summary`

@@ -3,5 +3,3 @@ $web = Get-CimInstance Win32_Process | Where-Object { $_.Name -eq "node.exe" -an
 
 "API running: $($api.Count -gt 0)"
 "Web running: $($web.Count -gt 0)"
-
-& tailscale serve status

@@ -15,5 +15,4 @@ if (-not $webRunning) {
 }
 
 Start-Sleep -Seconds 3
-& tailscale serve --bg 3000 | Out-Null
-& tailscale serve status
+Write-Output "Cookie Ops local dev services started."
