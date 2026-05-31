@@ -1,0 +1,28 @@
+CREATE TABLE IF NOT EXISTS recipes (
+  id TEXT PRIMARY KEY,
+  product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  version INTEGER NOT NULL DEFAULT 1,
+  yield_qty INTEGER NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS recipe_items (
+  id TEXT PRIMARY KEY,
+  recipe_id TEXT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+  ingredient_id TEXT NOT NULL REFERENCES ingredients(id),
+  qty NUMERIC(12,3) NOT NULL,
+  unit TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS suppliers (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ingredient_prices (
+  id TEXT PRIMARY KEY,
+  ingredient_id TEXT NOT NULL REFERENCES ingredients(id) ON DELETE CASCADE,
+  supplier_id TEXT REFERENCES suppliers(id),
+  unit_cost_cents INTEGER NOT NULL,
+  effective_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

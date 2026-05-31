@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: cookieops
+      POSTGRES_PASSWORD: cookieops
+      POSTGRES_DB: cookieops
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  api:
+    image: node:20
+    working_dir: /app
+    command: sh -c "npm install && npm run migrate && npm run dev"
+    volumes:
+      - ../../apps/api:/app
+    environment:
+      DATABASE_URL: postgresql://cookieops:cookieops@postgres:5432/cookieops
+      GOOGLE_FORMS_CSV_URL: ${GOOGLE_FORMS_CSV_URL:-}
+    ports:
+      - "4000:4000"
+    depends_on:
+      - postgres
+      - redis
+
+  web:
+    image: node:20
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    volumes:
+      - ../../apps/web:/app
+    environment:
+      API_BASE_URL: http://api:4000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
