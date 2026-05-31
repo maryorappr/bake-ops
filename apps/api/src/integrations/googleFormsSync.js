@@ -1,6 +1,7 @@
 import { parse } from "csv-parse/sync";
 import { pool } from "../db/index.js";
 
+// Allowed order statuses for imported rows.
 const validStatuses = new Set(["new", "prep", "ready", "fulfilled", "cancelled"]);
 
 function slugify(value) {
@@ -45,6 +46,7 @@ function parseOrderItems(rawValue) {
   });
 }
 
+// Resolve an item label from forms into an internal product reference.
 async function findProductByHint(productHint) {
   const result = await pool.query(
     `
@@ -59,6 +61,7 @@ async function findProductByHint(productHint) {
   return result.rows[0] || null;
 }
 
+// Pull Google Sheet CSV and upsert orders + order_items.
 export async function syncGoogleFormsFromCsvUrl(csvUrl) {
   if (!csvUrl) {
     throw new Error("GOOGLE_FORMS_CSV_URL is not set");
@@ -107,14 +110,20 @@ export async function syncGoogleFormsFromCsvUrl(csvUrl) {
       [id, externalId, customerName, customerEmail, dueAt, status, totalAmountCents, notes]
     );
 
-    const persistedOrderId = result.rows[0]?.inserted ? id : (await pool.query("SELECT id FROM orders WHERE external_id = $1", [externalId])).rows[0]?.id || id;
+    const persistedOrderId =
+      result.rows[0]?.inserted
+        ? id
+        : (await pool.query("SELECT id FROM orders WHERE external_id = $1", [externalId])).rows[0]?.id || id;
 
     const rawItems = getValue(row, ["Items", "Order Items", "Products", "Cookies"]);
     const parsedItems = parseOrderItems(rawItems);
     await pool.query("DELETE FROM order_items WHERE order_id = $1", [persistedOrderId]);
 
     if (parsedItems.length > 0) {
-      const safePrice = parsedItems.length > 0 ? Math.max(1, Math.round(totalAmountCents / parsedItems.length)) : totalAmountCents;
+      const safePrice =
+        parsedItems.length > 0
+          ? Math.max(1, Math.round(totalAmountCents / parsedItems.length))
+          : totalAmountCents;
       for (const parsed of parsedItems) {
         const product = await findProductByHint(parsed.productHint);
         if (!product) continue;

@@ -1,6 +1,7 @@
 import * as cheerio from "cheerio";
 import { pool } from "../db/index.js";
 
+// Global fallback patterns if site-level rules do not match.
 const STOCK_PATTERNS = [
   /in\s*stock/i,
   /available/i,
@@ -28,11 +29,13 @@ function detectAvailability(text) {
   return { inStock: null, availabilityText: "No clear stock signal" };
 }
 
+// First price-like token fallback from extracted text.
 function detectPrice(text) {
   const m = text.match(/\$\s?\d+(?:\.\d{2})?/);
   return m ? m[0] : null;
 }
 
+// Run watch checks across all enabled supplier targets.
 export async function runAvailabilityCheck() {
   const targets = await pool.query(`
     SELECT
@@ -69,6 +72,7 @@ export async function runAvailabilityCheck() {
       const html = await response.text();
       const $ = cheerio.load(html);
       const pageText = $("body").text().replace(/\s+/g, " ").slice(0, 50000);
+      // Site-specific selectors are preferred because generic page scans are noisy.
       let availabilitySourceText = pageText;
       let priceSourceText = pageText;
 
@@ -102,6 +106,7 @@ export async function runAvailabilityCheck() {
         }
       }
 
+      // If custom rule did not decide, use global fallback heuristics.
       if (inStock === null) {
         const availability = detectAvailability(availabilitySourceText);
         inStock = availability.inStock;

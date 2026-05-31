@@ -17,6 +17,10 @@ function badRequest(res, error) {
   res.status(400).json({ error });
 }
 
+function serverError(res, error, message) {
+  res.status(500).json({ error: message, details: error.message });
+}
+
 app.get("/api/health", async (_req, res) => {
   try {
     await pool.query("SELECT 1");
@@ -26,6 +30,7 @@ app.get("/api/health", async (_req, res) => {
   }
 });
 
+// Dashboard metrics used by home page cards.
 app.get("/api/dashboard/summary", async (_req, res) => {
   try {
     const [todayResult, atRiskResult, revenueResult, lowStockResult] = await Promise.all([
@@ -51,10 +56,11 @@ app.get("/api/dashboard/summary", async (_req, res) => {
       atRiskOrders: atRiskResult.rows[0].count
     });
   } catch (error) {
-    res.status(500).json({ error: "Failed to load dashboard summary", details: error.message });
+    serverError(res, error, "Failed to load dashboard summary");
   }
 });
 
+// Orders list with embedded line items for fulfillment.
 app.get("/api/orders", async (_req, res) => {
   try {
     const result = await pool.query(`
@@ -86,10 +92,11 @@ app.get("/api/orders", async (_req, res) => {
     `);
     res.json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: "Failed to load orders", details: error.message });
+    serverError(res, error, "Failed to load orders");
   }
 });
 
+// Single-order detail view.
 app.get("/api/orders/:id", async (req, res) => {
   try {
     const result = await pool.query(
@@ -131,10 +138,11 @@ app.get("/api/orders/:id", async (req, res) => {
 
     res.json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: "Failed to load order", details: error.message });
+    serverError(res, error, "Failed to load order");
   }
 });
 
+// Status transition endpoint used by fulfillment actions.
 app.patch("/api/orders/:id/status", async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
@@ -169,10 +177,11 @@ app.patch("/api/orders/:id/status", async (req, res) => {
 
     res.json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: "Failed to update order", details: error.message });
+    serverError(res, error, "Failed to update order");
   }
 });
 
+// Inventory read model (on-hand qty is derived from movement ledger).
 app.get("/api/inventory/items", async (_req, res) => {
   try {
     const result = await pool.query(`
@@ -189,10 +198,11 @@ app.get("/api/inventory/items", async (_req, res) => {
     `);
     res.json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: "Failed to load inventory", details: error.message });
+    serverError(res, error, "Failed to load inventory");
   }
 });
 
+// Create ingredient master record.
 app.post("/api/ingredients", async (req, res) => {
   const { id, name, unit, reorderLevel = 0 } = req.body;
   if (!id || !name || !unit) {
@@ -208,10 +218,11 @@ app.post("/api/ingredients", async (req, res) => {
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: "Failed to create ingredient", details: error.message });
+    serverError(res, error, "Failed to create ingredient");
   }
 });
 
+// Append inventory movement event.
 app.post("/api/inventory/movements", async (req, res) => {
   const { id, ingredientId, movementType, qty, unitCostCents = null, reason = null } = req.body;
 
@@ -237,10 +248,11 @@ app.post("/api/inventory/movements", async (req, res) => {
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: "Failed to create inventory movement", details: error.message });
+    serverError(res, error, "Failed to create inventory movement");
   }
 });
 
+// Recipe and BOM query for COGS/operations visibility.
 app.get("/api/recipes", async (_req, res) => {
   try {
     const result = await pool.query(`
@@ -271,10 +283,11 @@ app.get("/api/recipes", async (_req, res) => {
     `);
     res.json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: "Failed to load recipes", details: error.message });
+    serverError(res, error, "Failed to load recipes");
   }
 });
 
+// Create recipe + recipe items in one transaction.
 app.post("/api/recipes", async (req, res) => {
   const { id, productId, version = 1, yieldQty = 1, items = [] } = req.body;
   if (!id || !productId) {
@@ -302,12 +315,13 @@ app.post("/api/recipes", async (req, res) => {
     res.status(201).json({ ok: true, id });
   } catch (error) {
     await client.query("ROLLBACK");
-    res.status(500).json({ error: "Failed to create recipe", details: error.message });
+    serverError(res, error, "Failed to create recipe");
   } finally {
     client.release();
   }
 });
 
+// Pull latest Google Forms linked-sheet rows and upsert orders/items.
 app.post("/api/integrations/google/forms/sync", async (_req, res) => {
   try {
     const summary = await syncGoogleFormsFromCsvUrl(formsCsvUrl);
@@ -317,6 +331,7 @@ app.post("/api/integrations/google/forms/sync", async (_req, res) => {
   }
 });
 
+// Run supplier availability checks on demand.
 app.post("/api/availability/check", async (_req, res) => {
   try {
     const results = await runAvailabilityCheck();
@@ -326,6 +341,7 @@ app.post("/api/availability/check", async (_req, res) => {
   }
 });
 
+// Latest availability snapshot per supplier target.
 app.get("/api/availability/latest", async (_req, res) => {
   try {
     const result = await pool.query(`
@@ -353,7 +369,7 @@ app.get("/api/availability/latest", async (_req, res) => {
     `);
     res.json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: "Failed to load availability", details: error.message });
+    serverError(res, error, "Failed to load availability");
   }
 });
 

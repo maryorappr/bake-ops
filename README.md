@@ -50,3 +50,8 @@ Payload shape recommendation:
 - `/inventory` Inventory levels
 - `/recipes` Recipe BOM overview
 - `/availability` Supplier watch (stock + price signal snapshots)
+
+## Testing
+- Run full smoke tests:
+  - PowerShell: `powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/test-smoke.ps1`
+  - WSL/bash: `./scripts/test-smoke.sh`
